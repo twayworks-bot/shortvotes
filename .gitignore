@@ -1,0 +1,107 @@
+# ==============================================================
+# Byte-compiled / optimized / DLL files (파이썬 캐시 및 빌드)
+# ==============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==============================================================
+# Virtual Environments (가상환경)
+# ==============================================================
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ==============================================================
+# Environment Variables & Secrets (개인정보 및 민감 데이터)
+# ==============================================================
+.env
+.env.local
+.env.*.local
+.env.*
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+secrets/
+credentials/
+tokens.json
+client_secrets*.json
+syncgithub.env
+syncgithub.py
+
+# ==============================================================
+# Persistent Data & Databases (데이터베이스 및 업로드 데이터)
+# ==============================================================
+notes/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+uploads/
+storage/
+
+# ==============================================================
+# Testing & Code Quality Caches (테스트 및 정적분석 캐시)
+# ==============================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ==============================================================
+# Logs & System Temp Files (로그 및 임시 파일)
+# ==============================================================
+*.log
+logs/
+temp/
+tmp/
+*.tmp
+
+# ==============================================================
+# Editor & OS Artifacts (IDE 및 운영체제 생성 파일)
+# ==============================================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~

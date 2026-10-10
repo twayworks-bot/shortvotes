@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 모드 - {{ event.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <!-- 헤더 -->
+    <div class="border-b border-slate-200 pb-4 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-indigo-600"></i> 이벤트 관리자 모드
+            </h1>
+            <p class="text-slate-500 text-xs mt-1">{{ event.title }} (코드: {{ event.slug }})</p>
+        </div>
+        <a href="/{{ prefix }}/{{ event.slug }}" class="text-xs text-indigo-600 hover:underline flex items-center gap-1 font-semibold">
+            <i class="fa-solid fa-arrow-left"></i> 투표 화면으로 가기
+        </a>
+    </div>
+
+    <!-- 1. PIN 인증 입력 카드 (미인증 시 노출) -->
+    <div id="admin-auth-card" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="text-center space-y-1">
+            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-700 mx-auto flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 class="text-base font-bold text-slate-800">관리자 핀코드 입력</h2>
+            <p class="text-xs text-slate-500">이벤트 생성 시 설정한 핀코드(PIN)를 입력해 주세요.</p>
+        </div>
+
+        <div class="max-w-xs mx-auto space-y-3">
+            <input type="password" id="input-admin-pin" placeholder="PIN 입력" class="w-full text-center px-4 py-2.5 text-base font-mono tracking-widest border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button type="button" onclick="verifyAdminPin()" id="btn-verify-pin" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors">
+                관리자 확인
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 관리자 컨트롤 패널 (인증 성공 시 노출) -->
+    <div id="admin-panel" class="hidden space-y-6">
+        <!-- 상태 제어 카드 -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">투표 상태 제어</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        현재 상태: <span id="current-status-badge" class="font-bold {% if event.status == 'OPEN' %}text-emerald-600{% else %}text-slate-600{% endif %}">{{ event.status }}</span>
+                    </p>
+                </div>
+                <button type="button" onclick="toggleEventStatus()" id="btn-toggle-status" class="px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white {% if event.status == 'OPEN' %}bg-rose-600 hover:bg-rose-700{% else %}bg-emerald-600 hover:bg-emerald-700{% endif %}">
+                    {% if event.status == 'OPEN' %}투표 마감하기 (CLOSE){% else %}투표 재개하기 (OPEN){% endif %}
+                </button>
+            </div>
+        </div>
+
+        <!-- 주문 취합 및 결과 명단 카드 -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-900">주문 취합 및 집계 결과</h2>
+                <div class="flex gap-2">
+                    <button type="button" onclick="copyOrderSummary()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-clipboard-list"></i> 주문서 텍스트 복사
+                    </button>
+                    <button type="button" onclick="downloadCsv()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-file-csv"></i> CSV 다운로드
+                    </button>
+                </div>
+            </div>
+
+            <!-- 결과 테이블 -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-left text-xs text-slate-700" id="admin-results-table">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <tr>
+                            <th class="py-2.5 px-3">메뉴명</th>
+                            <th class="py-2.5 px-3 w-20 text-center">수량</th>
+                            <th class="py-2.5 px-3">선택한 참여자 명단</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-results-tbody" class="divide-y divide-slate-100">
+                        <tr><td colspan="3" class="text-center py-4 text-slate-400">결과를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.EVENT_SLUG = "{{ event.slug }}";
+    window.CURRENT_STATUS = "{{ event.status }}";
+    let adminPin = "";
+    let cachedResults = null;
+
+    async function verifyAdminPin() {
+        const pinInput = document.getElementById('input-admin-pin');
+        const pin = pinInput.value.trim();
+        if (!pin) {
+            showToast('PIN을 입력하세요.', 'warning');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/verify-pin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: pin })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                showToast(err.detail || 'PIN이 올바르지 않습니다.', 'error');
+                return;
+            }
+
+            adminPin = pin;
+            sessionStorage.setItem(`shortvotes_pin_${window.EVENT_SLUG}`, pin);
+            document.getElementById('admin-auth-card').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            showToast('관리자 인증 성공', 'success');
+            loadAdminResults();
+        } catch (e) {
+            showToast('인증 요청 실패', 'error');
+        }
+    }
+
+    // 세션에 저장된 핀이 있다면 자동 인증
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedPin = sessionStorage.getItem(`shortvotes_pin_${window.EVENT_SLUG}`);
+        if (savedPin) {
+            document.getElementById('input-admin-pin').value = savedPin;
+            verifyAdminPin();
+        }
+    });
+
+    async function toggleEventStatus() {
+        const newStatus = window.CURRENT_STATUS === 'OPEN' ? 'CLOSED' : 'OPEN';
+        try {
+            const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: adminPin, status: newStatus })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                showToast(err.detail || '상태 변경 실패', 'error');
+                return;
+            }
+
+            const updated = await res.json();
+            window.CURRENT_STATUS = updated.status;
+            const badge = document.getElementById('current-status-badge');
+            badge.innerText = updated.status;
+            badge.className = updated.status === 'OPEN' ? 'font-bold text-emerald-600' : 'font-bold text-slate-600';
+
+            const btn = document.getElementById('btn-toggle-status');
+            if (updated.status === 'OPEN') {
+                btn.innerText = '투표 마감하기 (CLOSE)';
+                btn.className = 'px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white bg-rose-600 hover:bg-rose-700';
+            } else {
+                btn.innerText = '투표 재개하기 (OPEN)';
+                btn.className = 'px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white bg-emerald-600 hover:bg-emerald-700';
+            }
+            showToast(`투표 상태가 ${updated.status}(으)로 변경되었습니다.`, 'success');
+        } catch (e) {
+            showToast('네트워크 오류', 'error');
+        }
+    }
+
+    async function loadAdminResults() {
+        try {
+            const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/results`);
+            if (res.ok) {
+                cachedResults = await res.json();
+                renderAdminTable(cachedResults);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderAdminTable(data) {
+        const tbody = document.getElementById('admin-results-tbody');
+        tbody.innerHTML = '';
+        
+        // 투표수 내림차순 정렬
+        const sorted = [...data.items].sort((a, b) => b.vote_count - a.vote_count);
+
+        sorted.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = item.vote_count > 0 ? 'bg-indigo-50/20' : '';
+            tr.innerHTML = `
+                <td class="py-2.5 px-3 font-semibold text-slate-800">${item.name}</td>
+                <td class="py-2.5 px-3 text-center font-bold ${item.vote_count > 0 ? 'text-indigo-600' : 'text-slate-400'}">${item.vote_count}</td>
+                <td class="py-2.5 px-3 text-slate-600">
+                    ${item.voters.length > 0 ? item.voters.map(v => `<span class="inline-block bg-white border border-slate-200 px-2 py-0.5 rounded text-[11px] mr-1 mb-1">${v}</span>`).join('') : '<span class="text-slate-400 text-[11px]">-</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function copyOrderSummary() {
+        if (!cachedResults) return;
+        const activeItems = cachedResults.items.filter(i => i.vote_count > 0);
+        if (activeItems.length === 0) {
+            showToast('투표 내역이 없습니다.', 'warning');
+            return;
+        }
+
+        let summary = `[${cachedResults.title} 주문 요약]\n`;
+        activeItems.forEach(i => {
+            summary += `- ${i.name}: ${i.vote_count}잔 (${i.voters.join(', ')})\n`;
+        });
+        summary += `총 합계: ${cachedResults.total_votes}잔`;
+
+        navigator.clipboard.writeText(summary).then(() => {
+            showToast('주문서 텍스트가 클립보드에 복사되었습니다!', 'success');
+        });
+    }
+
+    function downloadCsv() {
+        if (!cachedResults) return;
+        let csv = '\uFEFF메뉴명,카테고리,가격,수량,선택참여자\n';
+        cachedResults.items.forEach(i => {
+            const voters = `"${i.voters.join(', ')}"`;
+            csv += `"${i.name}","${i.category}",${i.price},${i.vote_count},${voters}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${window.EVENT_SLUG}_votes_summary.csv`;
+        a.click();
+    }
+</script>
+{% endblock %}

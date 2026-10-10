@@ -1,0 +1,38 @@
+/* ShortVotes 커스텀 스타일 */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+}
+
+/* 토스트 알림 스타일 */
+.toast-item {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.toast-item.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+/* 메뉴 카드 선택 상태 스타일 */
+.menu-card.selected {
+    border-color: #6366f1 !important;
+    background-color: #f5f3ff !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+}

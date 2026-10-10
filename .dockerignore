@@ -1,0 +1,100 @@
+# ==============================================================
+# Environment Variables & Secrets (민감 환경변수 및 보안 키)
+# ==============================================================
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+secrets/
+credentials/
+tokens.json
+client_secrets*.json
+syncgithub.env
+syncgithub.py
+
+# ==============================================================
+# Databases & Local Data (로컬 데이터베이스 - 컨테이너 볼륨 사용)
+# ==============================================================
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+uploads/
+storage/
+
+# ==============================================================
+# Python Bytecode & Virtual Environments (캐시 및 가상환경)
+# ==============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# ==============================================================
+# Development, Tests & Design Docs (런타임 불필요 문서 및 테스트)
+# ==============================================================
+notes/
+README.md
+GOAL.md
+test_*.py
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ==============================================================
+# Git & CI/CD Artifacts
+# ==============================================================
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# ==============================================================
+# Docker Files (빌드 컨텍스트 불필요 파일)
+# ==============================================================
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# ==============================================================
+# Editor & OS Artifacts (IDE 및 운영체제 임시 파일)
+# ==============================================================
+.vscode/
+.idea/
+*.sublime-*
+.DS_Store
+.DS_Store?
+._*
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# ==============================================================
+# Logs & Temp Files
+# ==============================================================
+*.log
+logs/
+temp/
+tmp/
+*.tmp

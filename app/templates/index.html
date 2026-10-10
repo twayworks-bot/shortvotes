@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}ShortVotes - 며칠 내 끝내는 초간편 단기 투표{% endblock %}
+
+{% block content %}
+<div class="space-y-10 py-6">
+    <!-- 히어로 섹션 -->
+    <div class="text-center space-y-4 max-w-2xl mx-auto">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-700 text-xs font-semibold">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Gemini AI OCR 메뉴 인식 탑재
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-snug">
+            회원가입 없이 <span class="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-600 to-indigo-600">이름 하나로 끝내는</span><br>
+            초간편 단기 선호도 투표
+        </h1>
+        <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+            팀 점심 메뉴, 카페 음료 취합, 동아리 회식 투표를 1분 만에 완료하세요.<br>
+            메뉴판 사진만 올리면 AI가 오탈자까지 정제하여 즉시 투표 후보로 만들어 드립니다.
+        </p>
+
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="/{{ prefix }}/new" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-plus-circle"></i> 새 투표 이벤트 만들기
+            </a>
+            <a href="/{{ prefix }}/events" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-base border-2 border-slate-200 hover:border-indigo-400 shadow-sm transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-layer-group text-indigo-600"></i> 전체 이벤트 보기 및 관리
+            </a>
+        </div>
+    </div>
+
+    <!-- 기존 이벤트 참여 바로가기 -->
+    <div class="max-w-md mx-auto bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h2 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-link text-indigo-500"></i> 전달받은 이벤트 링크가 있나요?
+        </h2>
+        <div class="flex gap-2">
+            <div class="relative flex-1">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-slate-400">/shortvotes/</span>
+                <input type="text" id="direct-slug-input" placeholder="이벤트-코드" class="w-full pl-28 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <button onclick="goToEvent()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition-colors">
+                이동
+            </button>
+        </div>
+    </div>
+
+    <!-- 핵심 특장점 3카드 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 text-base">메뉴판 사진 자동 OCR</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+                카페 메뉴판이나 텍스트를 등록하면 Gemini 2.5 Flash가 오탈자를 교정하여 깔끔한 메뉴 리스트로 자동 완성합니다.
+            </p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-id-badge"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 text-base">무인증 로컬스토리지 식별</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+                복잡한 회원가입 없이 브라우저 로컬 저장소에 고유 키를 저장하여 100명 내외 규모의 참여자를 간편하게 구별합니다.
+            </p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-shield-check"></i>
+            </div>
+            <h3 class="font-bold text-slate-900 text-base">이름 충돌 방지 & 30일 만료</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+                키가 없는 상태에서 중복 이름 입력 시 이름 변경 or 리셋을 선택할 수 있으며, 30일 후 자동 만료되어 안전합니다.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function goToEvent() {
+        const input = document.getElementById('direct-slug-input');
+        const val = input.value.trim();
+        if (!val) {
+            showToast('이벤트 코드를 입력해 주세요.', 'warning');
+            return;
+        }
+        window.location.href = `${window.APP_PREFIX}/${val}`;
+    }
+</script>
+{% endblock %}

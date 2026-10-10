@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}전체 이벤트 목록 및 관리 - ShortVotes{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- 헤더 & 액션 바 -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-indigo-600"></i> 전체 이벤트 목록 및 관리
+            </h1>
+            <p class="text-slate-500 text-xs mt-1">
+                등록된 모든 선호도 투표 이벤트를 확인하고, 투표 참여 및 관리자 기능을 수행할 수 있습니다.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/{{ prefix }}/new" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition-all">
+                <i class="fa-solid fa-plus text-xs"></i> 새 이벤트 만들기
+            </a>
+        </div>
+    </div>
+
+    <!-- 검색 및 필터 바 -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div class="relative w-full sm:w-80">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" id="event-search-input" onkeyup="filterEvents()" placeholder="이벤트 제목 또는 코드 검색..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500 w-full sm:w-auto justify-end">
+            <span>총 <strong id="visible-count" class="text-indigo-600 font-bold">{{ events|length }}</strong>개의 이벤트</span>
+        </div>
+    </div>
+
+    <!-- 이벤트 카드 그리드 -->
+    <div id="events-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% if events and events|length > 0 %}
+            {% for evt in events %}
+            <div class="event-card bg-white rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4"
+                 data-title="{{ evt.title|lower }}"
+                 data-slug="{{ evt.slug|lower }}">
+                
+                <!-- 상단: 상태 및 슬러그 -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold {% if evt.status == 'OPEN' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-slate-100 text-slate-600 border border-slate-300{% endif %}">
+                            <span class="w-1.5 h-1.5 rounded-full {% if evt.status == 'OPEN' %}bg-emerald-500 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                            {% if evt.status == 'OPEN' %}진행 중{% else %}마감됨{% endif %}
+                        </span>
+                        
+                        <div class="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                            <span>/{{ prefix }}/{{ evt.slug }}</span>
+                            <button type="button" onclick="copyEventUrl('{{ evt.slug }}')" title="링크 복사" class="p-1 hover:text-indigo-600 transition-colors">
+                                <i class="fa-solid fa-copy text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <h2 class="text-base font-bold text-slate-900 line-clamp-1 hover:text-indigo-600 transition-colors">
+                        <a href="/{{ prefix }}/{{ evt.slug }}">{{ evt.title }}</a>
+                    </h2>
+
+                    {% if evt.description %}
+                    <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {{ evt.description }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                <!-- 중단: 통계 요약 뱃지 -->
+                <div class="grid grid-cols-3 gap-2 py-2 border-y border-slate-100 text-center text-xs">
+                    <div class="bg-slate-50 rounded-xl p-2">
+                        <span class="text-[10px] text-slate-400 block">메뉴</span>
+                        <strong class="text-slate-800 text-sm font-bold">{{ evt.menu_count }}개</strong>
+                    </div>
+                    <div class="bg-indigo-50/50 rounded-xl p-2">
+                        <span class="text-[10px] text-indigo-400 block">총 투표수</span>
+                        <strong class="text-indigo-600 text-sm font-bold">{{ evt.total_votes }}표</strong>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-2">
+                        <span class="text-[10px] text-slate-400 block">참여자</span>
+                        <strong class="text-slate-800 text-sm font-bold">{{ evt.participant_count }}명</strong>
+                    </div>
+                </div>
+
+                <!-- 하단: 개설일시 및 액션 버튼 그룹 -->
+                <div class="flex items-center justify-between pt-1 gap-2">
+                    <span class="text-[11px] text-slate-400">
+                        <i class="fa-regular fa-clock mr-1"></i>{{ evt.created_at.strftime('%Y-%m-%d %H:%M') if evt.created_at else '' }}
+                    </span>
+
+                    <div class="flex items-center gap-2">
+                        <a href="/{{ prefix }}/{{ evt.slug }}/admin" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 text-xs font-semibold flex items-center gap-1 transition-colors">
+                            <i class="fa-solid fa-gear text-slate-400 text-[10px]"></i> 관리
+                        </a>
+                        <a href="/{{ prefix }}/{{ evt.slug }}" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors">
+                            <i class="fa-solid fa-check-to-slot text-[10px]"></i> 투표하기
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div id="no-events-box" class="col-span-full bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+                <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-inbox"></i>
+                </div>
+                <h3 class="text-sm font-bold text-slate-700">등록된 이벤트가 없습니다</h3>
+                <p class="text-xs text-slate-400 max-w-sm mx-auto">첫 번째 투표 이벤트를 생성하고 참여자들에게 공유해 보세요.</p>
+                <div class="pt-2">
+                    <a href="/{{ prefix }}/new" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors">
+                        <i class="fa-solid fa-plus text-xs"></i> 새 이벤트 만들기
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- 검색 결과 없을 때 표시되는 빈 상태 박스 -->
+    <div id="no-search-results" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+        <i class="fa-solid fa-magnifying-glass text-slate-300 text-2xl"></i>
+        <h3 class="text-xs font-bold text-slate-700">검색 결과와 일치하는 이벤트가 없습니다.</h3>
+        <p class="text-[11px] text-slate-400">다른 검색어를 입력해 보세요.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyEventUrl(slug) {
+        const url = `${window.location.origin}${window.APP_PREFIX}/${slug}`;
+        copyToClipboard(url, '이벤트 링크가 복사되었습니다!');
+    }
+
+    function filterEvents() {
+        const query = document.getElementById('event-search-input').value.trim().toLowerCase();
+        const cards = document.querySelectorAll('.event-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const title = card.getAttribute('data-title') || '';
+            const slug = card.getAttribute('data-slug') || '';
+            if (!query || title.includes(query) || slug.includes(query)) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('visible-count').innerText = visibleCount;
+        const noSearch = document.getElementById('no-search-results');
+        if (noSearch) {
+            if (visibleCount === 0 && cards.length > 0) {
+                noSearch.classList.remove('hidden');
+            } else {
+                noSearch.classList.add('hidden');
+            }
+        }
+    }
+</script>
+{% endblock %}
