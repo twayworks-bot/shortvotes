@@ -16,23 +16,29 @@ VOLUME ["/data"]
 # 2. 웹앱 Base URL Prefix 환경변수 설정 (기본값: /shortvotes)
 ENV DEFAULT_PREFIX=/shortvotes
 
-# 3. 작업 디렉터리 설정
+# 3. Gemini AI 환경변수 설정 (코드에서 ".env" 또는 시스템 환경변수로 참조)
+# GEMINI_API_KEY는 기본값을 컨테이너 외부 관리(docker run -e, K8s Secret 등)나 시스템 내부에서 지정
+ENV GEMINI_API_KEY="" \
+    GEMINI_MODEL_NAME=gemini-2.5-flash \
+    GEMINI_API_MAX_TOKENS=1240000
+
+# 4. 작업 디렉터리 설정
 WORKDIR /app
 
-# 4. 종속성 설치
+# 5. 종속성 설치
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. 애플리케이션 소스 코드 복사
+# 6. 애플리케이션 소스 코드 복사
 COPY . .
 
-# 6. 노출 포트 설정 (5000번)
+# 7. 노출 포트 설정 (5000번)
 EXPOSE 5000
 
-# 7. 컨테이너 헬스체크 정의 (요청 사양에 맞춘 Prefix 경로 연동)
+# 8. 컨테이너 헬스체크 정의 (요청 사양에 맞춘 Prefix 경로 연동)
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=5s \
     CMD python -c "import os, requests; prefix = os.getenv('DEFAULT_PREFIX', ''); requests.get(f'http://localhost:5000{prefix}/api/status')"
 
-# 8. 컨테이너 시작 CMD (FastAPI Uvicorn 5000번 포트 기동)
+# 9. 컨테이너 시작 CMD (FastAPI Uvicorn 5000번 포트 기동)
 # (운영 Gunicorn 워커로 기동 시: CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5000", "--workers", "2", "--log-level", "debug", "--access-logfile", "-", "--error-logfile", "-", "--capture-output", "main:app"])
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]

@@ -98,7 +98,7 @@ async function startImageOcr() {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || '메뉴 추출에 실패했습니다.', 'error');
+            showToast(data.message || data.detail || '메뉴 추출에 실패했습니다.', 'error');
             return;
         }
 
@@ -151,7 +151,7 @@ async function startTextParse() {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-            showToast(data.message || '텍스트 정제에 실패했습니다.', 'error');
+            showToast(data.message || data.detail || '텍스트 정제에 실패했습니다.', 'error');
             return;
         }
 

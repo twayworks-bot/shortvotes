@@ -156,6 +156,8 @@ docker run -d \
   -v shortvotes_data:/data \
   -e DEFAULT_PREFIX=/shortvotes \
   -e GEMINI_API_KEY="AIzaSy..." \
+  -e GEMINI_MODEL_NAME="gemini-2.5-flash" \
+  -e GEMINI_API_MAX_TOKENS=1240000 \
   shortvotes:latest
 ```
 
@@ -175,6 +177,7 @@ services:
       - DEFAULT_PREFIX=/shortvotes
       - GEMINI_API_KEY=AIzaSy...
       - GEMINI_MODEL_NAME=gemini-2.5-flash
+      - GEMINI_API_MAX_TOKENS=1240000
     restart: unless-stopped
 
 volumes:

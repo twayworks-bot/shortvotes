@@ -16,12 +16,17 @@ async def ocr_menu(
     카페 메뉴판 이미지를 업로드받아 Gemini 멀티모달 Vision API를 통해
     메뉴 목록을 OCR 인식하고 오탈자를 교정하여 정형화된 JSON으로 반환합니다.
     """
-    if not image_file.content_type.startswith("image/"):
+    content_type = (image_file.content_type or "").lower()
+    filename = (image_file.filename or "").lower()
+    allowed_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".heic", ".heif", ".jfif")
+    if not content_type.startswith("image/") and not filename.endswith(allowed_exts):
         raise HTTPException(status_code=400, detail="이미지 파일만 업로드할 수 있습니다.")
 
     contents = await image_file.read()
-    if len(contents) > 10 * 1024 * 1024:  # 10MB 제한
-        raise HTTPException(status_code=400, detail="이미지 파일 크기는 최대 10MB까지 가능합니다.")
+    if not contents:
+        raise HTTPException(status_code=400, detail="비어 있는 이미지 파일입니다.")
+    if len(contents) > 20 * 1024 * 1024:  # 20MB 제한 (고해상도 스마트폰 사진 지원)
+        raise HTTPException(status_code=400, detail="이미지 파일 크기는 최대 20MB까지 가능합니다.")
 
     existing_list = []
     if existing_menus:
