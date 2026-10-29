@@ -29,5 +29,20 @@ def get_db():
         db.close()
 
 def init_db():
+    from sqlalchemy import text
     from app.models import event, user, vote
     Base.metadata.create_all(bind=engine)
+
+    # 기존 SQLite 데이터베이스 파일에 신규 컬럼 자동 마이그레이션 보장
+    with engine.begin() as conn:
+        event_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(events)")).fetchall()]
+        if "enable_options" not in event_cols:
+            conn.execute(text("ALTER TABLE events ADD COLUMN enable_options BOOLEAN NOT NULL DEFAULT 1"))
+
+        user_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+        if "option_text" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN option_text VARCHAR(128) DEFAULT ''"))
+
+        vote_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(votes)")).fetchall()]
+        if "option_text" not in vote_cols:
+            conn.execute(text("ALTER TABLE votes ADD COLUMN option_text VARCHAR(128) DEFAULT ''"))

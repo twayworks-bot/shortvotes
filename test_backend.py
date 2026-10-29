@@ -25,6 +25,7 @@ async def run_tests():
             description="금요일 점심 회식 후 마실 커피를 골라주세요!",
             slug="friday-coffee-test",
             pin="1234",
+            enable_options=True,
             menu_items=[
                 MenuItemCreate(name="아이스 아메리카노", category="커피", price=4500, display_order=0),
                 MenuItemCreate(name="카페라떼", category="커피", price=5000, display_order=1),
@@ -95,17 +96,26 @@ async def run_tests():
         print(f"✅ 메뉴2 투표: {v_res3}")
         assert v_res3["action"] == "VOTED"
 
-        # 5-4. 다른 사용자(이영희) 생성 후 메뉴2 투표
+        # 5-4. 다른 사용자(이영희) 생성 후 메뉴2 투표 (옵션 포함: 'hot, 샷추가')
         user2_res = UserService.identify_or_register(db, event, unique_key=None, user_name="이영희")
-        VoteService.submit_vote(db, event, user2_res.unique_key, menu2.id)
+        VoteService.submit_vote(db, event, user2_res.unique_key, menu2.id, option_text="hot, 샷추가")
 
-        # 5-5. 결과 집계 확인
+        # 5-5. 김철수 옵션선택 저장 ('cold, 오트밀')
+        opt_res = VoteService.update_vote_option(db, event, user1_key, "cold, 오트밀")
+        print(f"✅ 김철수 옵션 저장: {opt_res}")
+        assert opt_res["display_name"] == "김철수(cold, 오트밀)"
+
+        # 5-6. 결과 집계 확인 ("이름(옵션)" 표시 검증)
         results = VoteService.get_event_results(db, event, my_unique_key=user1_key)
         print(f"✅ 결과 집계: 총 투표수={results.total_votes}, 참여자수={results.total_participants}")
-        print(f"   내 투표 메뉴 ID: {results.my_vote_menu_id}")
+        print(f"   내 투표 메뉴 ID: {results.my_vote_menu_id}, 내 옵션: {results.my_vote_option}")
         for item in results.items:
             print(f"   - {item.name}: {item.vote_count}표 ({item.percentage}%) / 투표자: {item.voters}")
         assert results.total_votes == 2
+        assert results.my_vote_option == "cold, 오트밀"
+        menu2_result = next(i for i in results.items if i.menu_item_id == menu2.id)
+        assert "김철수(cold, 오트밀)" in menu2_result.voters
+        assert "이영희(hot, 샷추가)" in menu2_result.voters
 
         print("\n========== [6] Gemini AI 텍스트 메뉴 오타 교정 테스트 ==========")
         test_raw_text = "아에리카노 4500\n카페라때 5000\n자몽허니블랙티이 5800"

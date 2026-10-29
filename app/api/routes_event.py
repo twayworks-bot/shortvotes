@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.event_service import EventService
 from app.schemas.event_schema import (
-    EventCreate, EventResponse, PinVerifyRequest, EventStatusUpdate, MenuItemCreate, MenuItemResponse, EventListItemResponse
+    EventCreate, EventResponse, PinVerifyRequest, EventStatusUpdate, EventOptionsUpdate, MenuItemCreate, MenuItemResponse, EventListItemResponse
 )
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
@@ -42,6 +42,13 @@ def verify_pin(slug: str, payload: PinVerifyRequest, db: Session = Depends(get_d
 def update_status(slug: str, payload: EventStatusUpdate, db: Session = Depends(get_db)):
     """이벤트 상태 변경 (OPEN/CLOSED)"""
     updated_event = EventService.update_event_status(db, slug, payload.pin, payload.status)
+    return updated_event
+
+@router.patch("/{slug}/options", response_model=EventResponse)
+@router.post("/{slug}/options", response_model=EventResponse)
+def update_options(slug: str, payload: EventOptionsUpdate, db: Session = Depends(get_db)):
+    """이벤트 선호 메뉴 추가 옵션(옵션선택) 기능 활성화/비활성화 변경"""
+    updated_event = EventService.update_event_options(db, slug, payload.pin, payload.enable_options)
     return updated_event
 
 @router.post("/{slug}/menus", response_model=EventResponse)

@@ -50,7 +50,8 @@ class EventService:
             title=event_data.title.strip(),
             description=(event_data.description or "").strip(),
             pin_hash=hash_pin(event_data.pin.strip()),
-            status="OPEN"
+            status="OPEN",
+            enable_options=bool(event_data.enable_options)
         )
         db.add(new_event)
         db.flush()
@@ -98,6 +99,19 @@ class EventService:
         return event
 
     @staticmethod
+    def update_event_options(db: Session, slug: str, pin: str, enable_options: bool) -> Event:
+        event = EventService.get_event_by_slug(db, slug)
+        if not event:
+            raise HTTPException(status_code=404, detail="이벤트를 찾을 수 없습니다.")
+        if not verify_pin(pin.strip(), event.pin_hash):
+            raise HTTPException(status_code=403, detail="관리자 핀코드가 일치하지 않습니다.")
+
+        event.enable_options = bool(enable_options)
+        db.commit()
+        db.refresh(event)
+        return event
+
+    @staticmethod
     def update_event_menus(db: Session, slug: str, pin: str, items: List[MenuItemCreate]) -> Event:
         event = EventService.get_event_by_slug(db, slug)
         if not event:
@@ -136,6 +150,7 @@ class EventService:
                 "title": evt.title,
                 "description": evt.description or "",
                 "status": evt.status,
+                "enable_options": bool(getattr(evt, "enable_options", False)),
                 "max_users": evt.max_users,
                 "created_at": evt.created_at,
                 "menu_count": menu_count,

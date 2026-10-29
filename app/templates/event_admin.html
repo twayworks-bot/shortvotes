@@ -10,7 +10,12 @@
             <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved text-indigo-600"></i> 이벤트 관리자 모드
             </h1>
-            <p class="text-slate-500 text-xs mt-1">{{ event.title }} (코드: {{ event.slug }})</p>
+            <p class="text-slate-500 text-xs mt-1 flex items-center gap-2 flex-wrap">
+                <span>{{ event.title }} (코드: {{ event.slug }})</span>
+                <span id="header-options-pill" class="px-2 py-0.5 rounded-full text-[11px] font-bold {% if event.enable_options %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-slate-100 text-slate-500 border border-slate-200{% endif %}">
+                    옵션선택: {% if event.enable_options %}ON{% else %}OFF{% endif %}
+                </span>
+            </p>
         </div>
         <a href="/{{ prefix }}/{{ event.slug }}" class="text-xs text-indigo-600 hover:underline flex items-center gap-1 font-semibold">
             <i class="fa-solid fa-arrow-left"></i> 투표 화면으로 가기
@@ -24,7 +29,7 @@
                 <i class="fa-solid fa-lock"></i>
             </div>
             <h2 class="text-base font-bold text-slate-800">관리자 핀코드 입력</h2>
-            <p class="text-xs text-slate-500">이벤트 생성 시 설정한 핀코드(PIN)를 입력해 주세요.</p>
+            <p class="text-xs text-slate-500">PIN 인증 후 투표 상태 제어, <strong>선호 메뉴 옵션(옵션선택) 켜기/끄기</strong> 및 주문 취합을 관리할 수 있습니다.</p>
         </div>
 
         <div class="max-w-xs mx-auto space-y-3">
@@ -37,8 +42,9 @@
 
     <!-- 2. 관리자 컨트롤 패널 (인증 성공 시 노출) -->
     <div id="admin-panel" class="hidden space-y-6">
-        <!-- 상태 제어 카드 -->
-        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <!-- 상태 및 추가 옵션 제어 카드 -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5 divide-y divide-slate-100">
+            <!-- 2-1. 투표 상태(OPEN/CLOSED) 제어 -->
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-base font-bold text-slate-900">투표 상태 제어</h2>
@@ -48,6 +54,27 @@
                 </div>
                 <button type="button" onclick="toggleEventStatus()" id="btn-toggle-status" class="px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white {% if event.status == 'OPEN' %}bg-rose-600 hover:bg-rose-700{% else %}bg-emerald-600 hover:bg-emerald-700{% endif %}">
                     {% if event.status == 'OPEN' %}투표 마감하기 (CLOSE){% else %}투표 재개하기 (OPEN){% endif %}
+                </button>
+            </div>
+
+            <!-- 2-2. 선호 메뉴 추가 옵션(옵션선택) ON/OFF 제어 -->
+            <div class="pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-0.5">
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                        <i class="fa-solid fa-mug-hot text-indigo-600 text-sm"></i> 선호 메뉴 기본/추가 옵션(옵션선택) 기능
+                    </h2>
+                    <p class="text-xs text-slate-500">
+                        현재 설정:
+                        <span id="current-options-badge" class="font-bold {% if event.enable_options %}text-indigo-600{% else %}text-slate-500{% endif %}">
+                            {% if event.enable_options %}활성화됨 (ON - hot/cold, 오트밀, 샷추가 등 선택 가능){% else %}비활성화됨 (OFF){% endif %}
+                        </span>
+                    </p>
+                    <p class="text-[11px] text-slate-400">
+                        투표 화면의 "참여자: 이름" 옆에 추가옵션 입력창 및 [옵션선택] 버튼을 노출할지 설정합니다.
+                    </p>
+                </div>
+                <button type="button" onclick="toggleEventOptions()" id="btn-toggle-options" class="shrink-0 px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white {% if event.enable_options %}bg-slate-600 hover:bg-slate-700{% else %}bg-indigo-600 hover:bg-indigo-700{% endif %}">
+                    {% if event.enable_options %}옵션 기능 끄기 (OFF){% else %}옵션 기능 켜기 (ON){% endif %}
                 </button>
             </div>
         </div>
@@ -90,6 +117,7 @@
 <script>
     window.EVENT_SLUG = "{{ event.slug }}";
     window.CURRENT_STATUS = "{{ event.status }}";
+    window.CURRENT_ENABLE_OPTIONS = {{ 'true' if event.enable_options else 'false' }};
     let adminPin = "";
     let cachedResults = null;
 
@@ -164,6 +192,54 @@
                 btn.className = 'px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white bg-emerald-600 hover:bg-emerald-700';
             }
             showToast(`투표 상태가 ${updated.status}(으)로 변경되었습니다.`, 'success');
+        } catch (e) {
+            showToast('네트워크 오류', 'error');
+        }
+    }
+
+    async function toggleEventOptions() {
+        const newEnableOptions = !window.CURRENT_ENABLE_OPTIONS;
+        try {
+            const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/options`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin: adminPin, enable_options: newEnableOptions })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                showToast(err.detail || '옵션 설정 변경 실패', 'error');
+                return;
+            }
+
+            const updated = await res.json();
+            window.CURRENT_ENABLE_OPTIONS = Boolean(updated.enable_options);
+            const badge = document.getElementById('current-options-badge');
+            const btn = document.getElementById('btn-toggle-options');
+            const headerPill = document.getElementById('header-options-pill');
+
+            if (window.CURRENT_ENABLE_OPTIONS) {
+                badge.innerText = '활성화됨 (ON - hot/cold, 오트밀, 샷추가 등 선택 가능)';
+                badge.className = 'font-bold text-indigo-600';
+                btn.innerText = '옵션 기능 끄기 (OFF)';
+                btn.className = 'shrink-0 px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white bg-slate-600 hover:bg-slate-700';
+                if (headerPill) {
+                    headerPill.innerText = '옵션선택: ON';
+                    headerPill.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200';
+                }
+                showToast('선호 메뉴 추가 옵션(옵션선택) 기능이 활성화(ON)되었습니다.', 'success');
+            } else {
+                badge.innerText = '비활성화됨 (OFF)';
+                badge.className = 'font-bold text-slate-500';
+                btn.innerText = '옵션 기능 켜기 (ON)';
+                btn.className = 'shrink-0 px-4 py-2 text-xs font-bold rounded-xl shadow-sm transition-colors text-white bg-indigo-600 hover:bg-indigo-700';
+                if (headerPill) {
+                    headerPill.innerText = '옵션선택: OFF';
+                    headerPill.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200';
+                }
+                showToast('선호 메뉴 추가 옵션(옵션선택) 기능이 비활성화(OFF)되었습니다.', 'info');
+            }
+            loadAdminResults();
         } catch (e) {
             showToast('네트워크 오류', 'error');
         }

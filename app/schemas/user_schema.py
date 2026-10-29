@@ -14,6 +14,7 @@ class UserResponse(BaseModel):
     id: str  # Unique Key
     event_id: str
     user_name: str
+    option_text: Optional[str] = ""
     created_at: datetime
     last_seen_at: datetime
     is_active: bool
@@ -26,3 +27,5 @@ class IdentifyResult(BaseModel):
     message: str
     user: Optional[UserResponse] = None
     unique_key: Optional[str] = None
+    voted_menu_id: Optional[str] = None
+    vote_option: Optional[str] = ""

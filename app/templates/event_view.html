@@ -29,15 +29,72 @@
             {% endif %}
         </div>
 
-        <!-- 현재 참여자 정보 바 -->
-        <div id="user-info-bar" class="hidden pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <div class="flex items-center gap-2">
-                <span class="text-slate-400">참여자:</span>
-                <span id="current-user-name" class="font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md"></span>
+        <!-- 현재 참여자 정보 및 추가옵션 선택 바 -->
+        <div id="user-info-bar" class="pt-3 border-t border-slate-100 space-y-2.5 text-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2 flex-1">
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-slate-400">참여자:</span>
+                        <span id="current-user-name" onclick="if(!currentUser) showRegisterModal();" class="font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-md cursor-pointer">이름 입력 필요</span>
+                    </div>
+
+                    {% if event.enable_options %}
+                    <!-- 추가옵션 Input 컨트롤 및 옵션선택 버튼 -->
+                    <div class="flex items-center gap-1.5 flex-1 min-w-[220px] max-w-md">
+                        <input type="text" id="vote-option-input" list="preset-options-datalist"
+                               placeholder="추가옵션 입력 (예: hot, cold, 오트밀, 샷추가)"
+                               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); saveVoteOption(false); }"
+                               oninput="syncPresetButtonsVisual()"
+                               class="w-full px-2.5 py-1.5 text-xs border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
+                        <datalist id="preset-options-datalist">
+                            <option value="hot"></option>
+                            <option value="cold"></option>
+                            <option value="오트밀"></option>
+                            <option value="샷추가"></option>
+                            <option value="hot, 샷추가"></option>
+                            <option value="cold, 샷추가"></option>
+                            <option value="cold, 오트밀"></option>
+                        </datalist>
+                        <button type="button" id="btn-option-select" onclick="saveVoteOption(false)"
+                                class="shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-sliders text-[10px]"></i> 옵션선택
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <button type="button" onclick="resetMyIdentity()" class="text-xs text-slate-400 hover:text-rose-600 transition-colors shrink-0">
+                    이름 변경
+                </button>
             </div>
-            <button type="button" onclick="resetMyIdentity()" class="text-xs text-slate-400 hover:text-rose-600 transition-colors">
-                이름 변경
-            </button>
+
+            {% if event.enable_options %}
+            <!-- 기본 옵션 빠른 선택 칩 영역 (hot, cold, 오트밀, 샷추가 등) -->
+            <div id="basic-options-bar" class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span class="text-[11px] text-slate-400 mr-0.5"><i class="fa-solid fa-wand-magic-sparkles text-indigo-400 mr-1"></i>기본 옵션:</span>
+                <button type="button" onclick="togglePresetOption('hot')" data-opt="hot" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-rose-300 hover:bg-rose-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    🔥 hot
+                </button>
+                <button type="button" onclick="togglePresetOption('cold')" data-opt="cold" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-sky-300 hover:bg-sky-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    🧊 cold
+                </button>
+                <button type="button" onclick="togglePresetOption('오트밀')" data-opt="오트밀" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    🌾 오트밀
+                </button>
+                <button type="button" onclick="togglePresetOption('샷추가')" data-opt="샷추가" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    ☕ 샷추가
+                </button>
+                <button type="button" onclick="togglePresetOption('연하게')" data-opt="연하게" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    💧 연하게
+                </button>
+                <button type="button" onclick="togglePresetOption('디카페인')" data-opt="디카페인" class="preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 text-slate-600 text-[11px] font-medium transition-colors">
+                    🌿 디카페인
+                </button>
+                <button type="button" onclick="clearVoteOption()" class="px-2 py-0.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-[11px] transition-colors" title="옵션 비우기">
+                    <i class="fa-solid fa-xmark"></i> 초기화
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -161,6 +218,7 @@
 <script>
     window.EVENT_SLUG = "{{ event.slug }}";
     window.EVENT_STATUS = "{{ event.status }}";
+    window.EVENT_ENABLE_OPTIONS = {{ 'true' if event.enable_options else 'false' }};
 </script>
-<script src="/{{ prefix }}/static/js/vote.js"></script>
+<script src="/{{ prefix }}/static/js/vote.js?v=20261029_3"></script>
 {% endblock %}

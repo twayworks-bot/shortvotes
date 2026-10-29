@@ -50,11 +50,23 @@ class UserService:
             db.commit()
             db.refresh(user)
 
+            # 기존 투표 내역 및 옵션 즉시 조회하여 함께 반환
+            existing_vote = db.query(Vote).filter(
+                Vote.event_id == event.id,
+                Vote.user_id == user.id
+            ).first()
+            voted_menu_id = existing_vote.menu_item_id if existing_vote else None
+            enable_opts = bool(getattr(event, "enable_options", True))
+            raw_opt = (existing_vote.option_text if (existing_vote and existing_vote.option_text is not None) else (user.option_text or "")).strip()
+            vote_option = raw_opt if enable_opts else ""
+
             return IdentifyResult(
                 status="VALID",
                 message="인증 성공",
                 user=UserResponse.model_validate(user),
-                unique_key=user.id
+                unique_key=user.id,
+                voted_menu_id=voted_menu_id,
+                vote_option=vote_option
             )
 
         # 2. 브라우저에 unique_key가 없고 user_name만 제공된 경우

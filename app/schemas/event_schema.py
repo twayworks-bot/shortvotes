@@ -25,6 +25,7 @@ class EventCreate(BaseModel):
     description: Optional[str] = ""
     slug: Optional[str] = None
     pin: str = Field(..., min_length=4, max_length=16)
+    enable_options: Optional[bool] = True
     menu_items: List[MenuItemCreate] = []
 
 class EventResponse(BaseModel):
@@ -33,6 +34,7 @@ class EventResponse(BaseModel):
     title: str
     description: Optional[str] = ""
     status: str
+    enable_options: bool = True
     max_users: int
     created_at: datetime
     menu_items: List[MenuItemResponse] = []
@@ -47,12 +49,17 @@ class EventStatusUpdate(BaseModel):
     pin: str
     status: str  # OPEN, CLOSED
 
+class EventOptionsUpdate(BaseModel):
+    pin: str
+    enable_options: bool
+
 class EventListItemResponse(BaseModel):
     id: str
     slug: str
     title: str
     description: Optional[str] = ""
     status: str
+    enable_options: bool = True
     max_users: int
     created_at: datetime
     menu_count: int = 0

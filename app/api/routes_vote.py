@@ -6,7 +6,7 @@ from app.database import get_db
 from app.services.event_service import EventService
 from app.services.vote_service import VoteService
 from app.schemas.vote_schema import (
-    VoteSubmitRequest, VoteCancelRequest, EventResultsResponse
+    VoteSubmitRequest, VoteOptionUpdateRequest, VoteCancelRequest, EventResultsResponse
 )
 
 router = APIRouter(prefix="/api/events/{slug}", tags=["Votes"])
@@ -17,6 +17,7 @@ def submit_vote(slug: str, payload: VoteSubmitRequest, db: Session = Depends(get
     메뉴 투표 등록/변경.
     - 동일 메뉴를 다시 클릭하면 투표가 취소(토글)됩니다.
     - 다른 메뉴를 클릭하면 기존 투표가 해당 메뉴로 변경됩니다.
+    - option_text가 함께 전달되면 추가 옵션도 함께 저장됩니다.
     """
     event = EventService.get_event_by_slug(db, slug)
     if not event:
@@ -26,7 +27,24 @@ def submit_vote(slug: str, payload: VoteSubmitRequest, db: Session = Depends(get
         db=db,
         event=event,
         unique_key=payload.unique_key,
-        menu_item_id=payload.menu_item_id
+        menu_item_id=payload.menu_item_id,
+        option_text=payload.option_text
+    )
+    return result
+
+@router.post("/vote/option")
+@router.patch("/vote/option")
+def update_vote_option(slug: str, payload: VoteOptionUpdateRequest, db: Session = Depends(get_db)):
+    """참여자 선호 메뉴 추가 옵션(hot/cold, 오트밀, 샷추가 등) 기록 및 저장"""
+    event = EventService.get_event_by_slug(db, slug)
+    if not event:
+        raise HTTPException(status_code=404, detail="이벤트를 찾을 수 없습니다.")
+
+    result = VoteService.update_vote_option(
+        db=db,
+        event=event,
+        unique_key=payload.unique_key,
+        option_text=payload.option_text
     )
     return result
 

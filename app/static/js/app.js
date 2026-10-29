@@ -65,6 +65,7 @@ const StorageUtil = {
             const payload = {
                 unique_key: userObj.unique_key || userObj.id,
                 user_name: userObj.user_name,
+                option_text: userObj.option_text || "",
                 issued_at: userObj.issued_at || Date.now()
             };
             localStorage.setItem(this.getKey(slug), JSON.stringify(payload));

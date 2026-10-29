@@ -1,12 +1,12 @@
 // vote.js - 사용자 식별, 이름 충돌 처리, 투표 인터랙션 및 결과 렌더링
 
-let currentUser = null; // { unique_key, user_name }
+let currentUser = null; // { unique_key, user_name, option_text }
 let pendingConflictName = null;
 let myVotedMenuId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    initUserIdentity();
-    loadResults(false);
+document.addEventListener('DOMContentLoaded', async () => {
+    await initUserIdentity();
+    await loadResults(false);
 });
 
 // 1. 사용자 식별 초기화
@@ -24,13 +24,20 @@ async function initUserIdentity() {
 
             const data = await res.json();
             if (data.status === 'VALID' && data.user) {
+                const resolvedOpt = (data.vote_option !== undefined && data.vote_option !== null)
+                    ? data.vote_option
+                    : (data.user.option_text || savedUser.option_text || "");
                 currentUser = {
                     unique_key: data.unique_key || data.user.id,
-                    user_name: data.user.user_name
+                    user_name: data.user.user_name,
+                    option_text: resolvedOpt
                 };
+                if (data.voted_menu_id !== undefined) {
+                    myVotedMenuId = data.voted_menu_id;
+                }
                 StorageUtil.setUser(window.EVENT_SLUG, currentUser);
                 updateUserBar();
-                highlightMyVote();
+                updateMenuCardsVisual(myVotedMenuId);
                 return;
             } else if (data.status === 'EXPIRED') {
                 StorageUtil.removeUser(window.EVENT_SLUG);
@@ -54,8 +61,130 @@ function showRegisterModal() {
 
 function updateUserBar() {
     if (currentUser) {
-        document.getElementById('current-user-name').innerText = currentUser.user_name;
+        const opt = (currentUser.option_text || "").trim();
+        const nameEl = document.getElementById('current-user-name');
+        if (window.EVENT_ENABLE_OPTIONS && opt) {
+            nameEl.innerText = `${currentUser.user_name}(${opt})`;
+        } else {
+            nameEl.innerText = currentUser.user_name;
+        }
         document.getElementById('user-info-bar').classList.remove('hidden');
+
+        const optInput = document.getElementById('vote-option-input');
+        if (optInput && document.activeElement !== optInput) {
+            optInput.value = opt;
+        }
+        syncPresetButtonsVisual();
+    }
+}
+
+// 기본 옵션 칩(hot, cold, 오트밀, 샷추가 등) 선택/토글 처리
+function togglePresetOption(optName) {
+    const optInput = document.getElementById('vote-option-input');
+    if (!optInput) return;
+
+    let parts = optInput.value
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+    const lowerTarget = optName.toLowerCase();
+    const existingIdx = parts.findIndex(p => p.toLowerCase() === lowerTarget);
+
+    if (existingIdx >= 0) {
+        // 이미 선택된 기본 옵션이면 제거 (토글)
+        parts.splice(existingIdx, 1);
+    } else {
+        // hot / cold 온도 옵션은 상호 배타적으로 교체 후 맨 앞에 배치
+        if (lowerTarget === 'hot' || lowerTarget === 'cold') {
+            parts = parts.filter(p => {
+                const lp = p.toLowerCase();
+                return lp !== 'hot' && lp !== 'cold';
+            });
+            parts.unshift(optName);
+        } else {
+            parts.push(optName);
+        }
+    }
+
+    optInput.value = parts.join(', ');
+    syncPresetButtonsVisual();
+    saveVoteOption(true);
+}
+
+function clearVoteOption() {
+    const optInput = document.getElementById('vote-option-input');
+    if (!optInput) return;
+    optInput.value = '';
+    syncPresetButtonsVisual();
+    saveVoteOption(false);
+}
+
+function syncPresetButtonsVisual() {
+    const optInput = document.getElementById('vote-option-input');
+    if (!optInput) return;
+
+    const activeSet = new Set(
+        optInput.value
+            .split(',')
+            .map(s => s.trim().toLowerCase())
+            .filter(s => s.length > 0)
+    );
+
+    document.querySelectorAll('.preset-opt-btn').forEach(btn => {
+        const opt = (btn.getAttribute('data-opt') || '').toLowerCase();
+        if (activeSet.has(opt)) {
+            btn.className = 'preset-opt-btn px-2 py-0.5 rounded-full border border-indigo-600 bg-indigo-600 text-white text-[11px] font-bold transition-colors shadow-sm';
+        } else {
+            btn.className = 'preset-opt-btn px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 text-slate-600 text-[11px] font-medium transition-colors';
+        }
+    });
+}
+
+// 옵션선택 버튼 클릭(또는 엔터/칩 선택) 시 서버에 추가옵션 기록 및 저장
+async function saveVoteOption(silent = false) {
+    if (!window.EVENT_ENABLE_OPTIONS) return;
+
+    if (window.EVENT_STATUS === 'CLOSED') {
+        if (!silent) showToast('이미 마감된 투표입니다.', 'warning');
+        return;
+    }
+
+    if (!currentUser || !currentUser.unique_key) {
+        showRegisterModal();
+        return;
+    }
+
+    const optInput = document.getElementById('vote-option-input');
+    const optText = optInput ? optInput.value.trim() : '';
+
+    try {
+        const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/vote/option`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                unique_key: currentUser.unique_key,
+                option_text: optText
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            if (!silent) showToast(err.detail || '옵션 저장 실패', 'error');
+            return;
+        }
+
+        const data = await res.json();
+        currentUser.option_text = data.option_text || '';
+        StorageUtil.setUser(window.EVENT_SLUG, currentUser);
+        updateUserBar();
+        loadResults(false);
+
+        if (!silent) {
+            showToast(data.message || '옵션이 저장되었습니다.', 'success');
+        }
+    } catch (e) {
+        if (!silent) showToast('옵션 저장 중 통신 오류', 'error');
     }
 }
 
@@ -86,7 +215,8 @@ async function submitUserRegistration() {
             // 신규 발급 완료
             currentUser = {
                 unique_key: data.unique_key || data.user.id,
-                user_name: data.user.user_name
+                user_name: data.user.user_name,
+                option_text: data.user.option_text || ""
             };
             StorageUtil.setUser(window.EVENT_SLUG, currentUser);
             document.getElementById('user-register-modal').classList.add('hidden');
@@ -143,7 +273,8 @@ async function resolveConflictReset() {
         const newUser = await res.json();
         currentUser = {
             unique_key: newUser.id,
-            user_name: newUser.user_name
+            user_name: newUser.user_name,
+            option_text: newUser.option_text || ""
         };
         StorageUtil.setUser(window.EVENT_SLUG, currentUser);
         document.getElementById('name-conflict-modal').classList.add('hidden');
@@ -160,7 +291,11 @@ function resetMyIdentity() {
         StorageUtil.removeUser(window.EVENT_SLUG);
         currentUser = null;
         myVotedMenuId = null;
-        document.getElementById('user-info-bar').classList.add('hidden');
+        const nameEl = document.getElementById('current-user-name');
+        if (nameEl) nameEl.innerText = '이름 입력 필요';
+        const optInput = document.getElementById('vote-option-input');
+        if (optInput) optInput.value = '';
+        syncPresetButtonsVisual();
         clearMenuCardStyles();
         showRegisterModal();
     }
@@ -178,14 +313,22 @@ async function handleMenuClick(menuItemId) {
         return;
     }
 
+    const optInput = document.getElementById('vote-option-input');
+    const optionText = (window.EVENT_ENABLE_OPTIONS && optInput) ? optInput.value.trim() : null;
+
     try {
+        const payload = {
+            unique_key: currentUser.unique_key,
+            menu_item_id: menuItemId
+        };
+        if (optionText !== null) {
+            payload.option_text = optionText;
+        }
+
         const res = await fetch(`${window.APP_PREFIX}/api/events/${window.EVENT_SLUG}/vote`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                unique_key: currentUser.unique_key,
-                menu_item_id: menuItemId
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
@@ -196,6 +339,11 @@ async function handleMenuClick(menuItemId) {
 
         const data = await res.json();
         myVotedMenuId = data.menu_item_id;
+        if (window.EVENT_ENABLE_OPTIONS && data.option_text !== undefined) {
+            currentUser.option_text = data.option_text || "";
+            StorageUtil.setUser(window.EVENT_SLUG, currentUser);
+            updateUserBar();
+        }
 
         updateMenuCardsVisual(myVotedMenuId);
         showToast(data.message, 'success');
@@ -227,9 +375,7 @@ function clearMenuCardStyles() {
 }
 
 function highlightMyVote() {
-    if (myVotedMenuId) {
-        updateMenuCardsVisual(myVotedMenuId);
-    }
+    updateMenuCardsVisual(myVotedMenuId);
 }
 
 // 5. 탭 전환 (투표하기 vs 결과보기)
@@ -244,6 +390,7 @@ function switchVoteTab(tab) {
         resultsBtn.className = 'py-2.5 px-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition-colors';
         panelVote.classList.remove('hidden');
         panelResults.classList.add('hidden');
+        loadResults(false);
     } else {
         resultsBtn.className = 'py-2.5 px-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 flex items-center gap-1.5 transition-colors';
         voteBtn.className = 'py-2.5 px-3 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition-colors';
@@ -266,9 +413,14 @@ async function loadResults(showToastMsg = false) {
         document.getElementById('res-total-votes').innerText = data.total_votes;
         document.getElementById('res-total-users').innerText = data.total_participants;
 
-        if (data.my_vote_menu_id) {
+        if (data.my_vote_menu_id !== undefined) {
             myVotedMenuId = data.my_vote_menu_id;
             highlightMyVote();
+        }
+        if (currentUser && window.EVENT_ENABLE_OPTIONS && data.my_vote_option !== undefined) {
+            currentUser.option_text = data.my_vote_option || "";
+            StorageUtil.setUser(window.EVENT_SLUG, currentUser);
+            updateUserBar();
         }
 
         renderResultsList(data);

@@ -255,6 +255,8 @@ async function submitCreateEvent() {
     const slug = document.getElementById('event-slug').value.trim();
     const pin = document.getElementById('event-pin').value.trim();
     const description = document.getElementById('event-desc').value.trim();
+    const enableOptionsEl = document.getElementById('event-enable-options');
+    const enableOptions = enableOptionsEl ? enableOptionsEl.checked : false;
 
     if (!title) {
         showToast('이벤트 제목을 입력해 주세요.', 'warning');
@@ -283,6 +285,7 @@ async function submitCreateEvent() {
             slug: slug || null,
             pin: pin,
             description: description,
+            enable_options: enableOptions,
             menu_items: menuItems.map((m, idx) => ({
                 name: m.name,
                 category: m.category,

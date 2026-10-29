@@ -13,6 +13,7 @@ class User(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)  # Unique Key (브라우저 localStorage에 저장)
     event_id = Column(String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     user_name = Column(String(64), nullable=False)
+    option_text = Column(String(128), nullable=True, default="")  # 참여자 기본/추가 옵션 기록 (예: hot, 샷추가)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

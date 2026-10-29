@@ -14,6 +14,7 @@ class Vote(Base):
     event_id = Column(String(36), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     menu_item_id = Column(String(36), ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    option_text = Column(String(128), nullable=True, default="")  # 투표 메뉴 추가 옵션 (예: hot, cold, 오트밀, 샷추가)
     voted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # 1인 1선택 제약조건
